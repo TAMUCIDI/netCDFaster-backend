@@ -16,8 +16,13 @@ def create_app():
     # load config
     app.config.from_object(Config)
 
-    CORS(app)
-    Session(app)
+    CORS(
+        app,
+        supports_credentials=True)
+
+    session = Session()
+    session.init_app(app)
+
     # register module blueprints
     app.register_blueprint(file_bp)
 

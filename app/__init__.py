@@ -18,7 +18,8 @@ def create_app():
 
     CORS(
         app,
-        supports_credentials=True)
+        supports_credentials=True,
+        origins=['http://127.0.0.1:3000'])
 
     session = Session()
     session.init_app(app)

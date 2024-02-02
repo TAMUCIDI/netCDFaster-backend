@@ -7,6 +7,8 @@ class Config:
     SESSION_TYPE = 'redis'
     SESSION_PERMANENT = False
     SESSION_USE_SIGNER = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = False
     SESSION_REDIS = redis.Redis(
         host='redis-15719.c325.us-east-1-4.ec2.cloud.redislabs.com',
         port=15719,

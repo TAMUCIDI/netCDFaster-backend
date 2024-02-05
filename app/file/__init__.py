@@ -41,3 +41,16 @@ def variable_name(var_name):
     variable_info = query_variable(file_path, var_name)
 
     return jsonify(variable_info), 200
+
+@file_bp.route('/varplot', methods=['GET'])
+def plot_variable():
+    try:
+        file_path = session['file_path']
+    except KeyError:
+        return jsonify({'Session Error': 'No Uploaded File Found'}), 400
+    
+    file_path = Path(file_path)
+
+    queryDict = request.args.to_dict()
+
+    return jsonify(queryDict), 200

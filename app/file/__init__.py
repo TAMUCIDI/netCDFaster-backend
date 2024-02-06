@@ -3,7 +3,7 @@ from pathlib import Path
 
 from flask import Blueprint, request, jsonify, current_app, session
 
-from .fileProcess import read_metadata, query_variable
+from .fileProcess import read_metadata, query_variable, plot_subset
 
 file_bp = Blueprint('file', __name__, url_prefix='/file')
 
@@ -52,5 +52,7 @@ def plot_variable():
     file_path = Path(file_path)
 
     queryDict = request.args.to_dict()
+
+    fig = plot_subset(file_path, queryDict)
 
     return jsonify(queryDict), 200

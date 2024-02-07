@@ -1,7 +1,7 @@
 from werkzeug.utils import secure_filename
 from pathlib import Path
 
-from flask import Blueprint, request, jsonify, current_app, session
+from flask import Blueprint, request, jsonify, current_app, session, send_file
 
 from .fileProcess import read_metadata, query_variable, plot_subset
 
@@ -53,6 +53,6 @@ def plot_variable():
 
     queryDict = request.args.to_dict()
 
-    fig = plot_subset(file_path, queryDict)
+    fig_buf = plot_subset(file_path, queryDict)
 
-    return jsonify(queryDict), 200
+    return send_file(fig_buf, mimetype='image/png'), 200

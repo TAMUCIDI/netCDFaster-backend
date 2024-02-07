@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 from dateutil import parser
 import io
 
-from flask import send_file
-
 def read_metadata(file):
     """ 解析NetCDF文件的元信息并返回一个字典。"""
     with xr.open_dataset(file) as ds:
@@ -103,4 +101,4 @@ def plot_subset(file_path, queryDict):
         buf.seek(0)
         plt.close()
 
-        return send_file(buf, mimetype='image/png')
+        return buf

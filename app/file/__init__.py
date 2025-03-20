@@ -54,6 +54,6 @@ def plot_variable():
     # TODO: check request args format
     queryDict = request.args.to_dict()
 
-    fig_buf = plot_subset(file_path, queryDict)
+    fig_buf = plot_subset(file_path, queryDict, session)
 
     return send_file(fig_buf, mimetype='image/png'), 200

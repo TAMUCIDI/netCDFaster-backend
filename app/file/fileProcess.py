@@ -1,3 +1,4 @@
+import numpy as np
 import xarray as xr
 
 from math import ceil
@@ -7,6 +8,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from dateutil import parser
 import io
+
+from app.model.model import predict_query_chunk
 
 def open_dataset(filename, interface, chunk_dict=None):
     return xr.open_dataset(filename, engine=interface, chunks=chunk_dict)
@@ -43,12 +46,15 @@ def query_variable(file, var_name):
     with xr.open_dataset(file) as ds:
         variable = ds[var_name]
         dim_names = variable.dims
-        var_info = {
-            'name': str(var_name),
-            'long_name': str(variable.long_name),
+        info = {
+            'file_size': str(ds.nbytes),
+            'var_short_name': str(var_name),
+            'var_long_name': str(variable.long_name),
             'units': str(variable.units),
             'shape': str(variable.shape),
             'dtype': str(variable.dtype),
+            'variable_size': str(variable.nbytes),
+            'var_dim_len': str(len(dim_names)),
             'coords': [],
         }
         for dim_name in dim_names:
@@ -58,10 +64,11 @@ def query_variable(file, var_name):
                 'dtype': str(dim_array.dtype),
                 'min': str(dim_array.values.min()),
                 'max': str(dim_array.values.max()),
+                'len': str(len(dim_array)),
             }
-            var_info['coords'].append(dim_info)
+            info['coords'].append(dim_info)
 
-        return var_info
+        return info
 
 def get_coord_names(variable):
     """ 获取数据集的坐标变量名称。"""
@@ -79,17 +86,47 @@ def get_coord_names(variable):
             coord_names['lat'] = coord_name
     return coord_names
     
-def plot_subset(file_path, queryDict):
+def plot_subset(file_path, queryDict, session):
+
+    var_name = queryDict['varName']
+    file_size = float(session[var_name]['file_size'])
+    var_dim_len = float(session[var_name]['var_dim_len'])
+    variable_size = float(session[var_name]['variable_size'])
+    lon_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'longitude'), None)
+    if lon_coord is None:
+        raise ValueError("Longitude coordinate not found in session data.")
+    lon_len = float(lon_coord['len'])
+    lat_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'latitude'), None)
+    if lat_coord is None:
+        raise ValueError("Latitude coordinate not found in session data.")
+    lat_len = float(lat_coord['len'])
+    time_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'time'), None)
+    if time_coord is None:
+        raise ValueError("Time coordinate not found in session data.")
+    time_len = float(time_coord['len'])
+
+    # lon value range
+    lon_range = [float(queryDict['lonMin']), float(queryDict['lonMax'])]
+    lon_query_len = float(lon_range[1] - lon_range[0])
+    # lat value range
+    lat_range = [float(queryDict['latMin']), float(queryDict['latMax'])]
+    lat_query_len = float(lat_range[1] - lat_range[0])
+    # time value
+    time_query_len = float(1)
+
+
+    x_array = [
+        lon_len, lat_len, time_len, file_size, var_dim_len, variable_size, lon_query_len, lat_query_len, time_query_len,
+    ]
 
     # predict chunk size dict using model
-    
+    chunk_dict = predict_query_chunk(x_array)
 
-    with xr.open_dataset(file_path) as ds:
-        var_name = queryDict['varName']
-        # lon value range
-        lon_range = [float(queryDict['lonMin']), float(queryDict['lonMax'])]
-        # lat value range
-        lat_range = [float(queryDict['latMin']), float(queryDict['latMax'])]
+
+    with xr.open_dataset(
+        file_path,
+        chunks=chunk_dict) as ds:
+        
         # time value
         time = parser.parse(queryDict['time'])
         variable = ds[var_name]
@@ -97,7 +134,10 @@ def plot_subset(file_path, queryDict):
         # 从数据集中获取指定变量和时间的子集
         try:
             # 使用.sel()选择最接近的时间点
-            subset = variable.sel({coord_names['time']: time.replace(tzinfo=None)}, method="nearest")
+            time_ns = np.datetime64(time.replace(tzinfo=None))
+            time_values = variable[coord_names['time']].values
+            time_index = int(np.abs(time_values - time_ns).argmin())
+            subset = variable.isel({coord_names['time']: time_index})
 
             # 使用.where()过滤经纬度范围
             subset = subset.where(
@@ -110,10 +150,14 @@ def plot_subset(file_path, queryDict):
             exit(1)
 
         # plot the subset
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10, 6))
         subset.plot(ax=ax)
+        ax.set_title(f"Subset of '{var_name}' at time {queryDict['time']}", fontsize=14)
+        ax.set_xlabel("Longitude", fontsize=12)
+        ax.set_ylabel("Latitude", fontsize=12)
+        ax.grid(True)
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format='png', bbox_inches='tight')
         buf.seek(0)
         plt.close()
 

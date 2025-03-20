@@ -36,7 +36,7 @@ def get_query_policy(n):
         raise ValueError("输入必须为1到9之间的整数")
 
 def calculate_chunk_size(total_length, num_divisions):
-    if num_divisions is None:
+    if np.isnan(num_divisions):
         return None
     else:
         return ceil(total_length / num_divisions)

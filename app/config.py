@@ -10,8 +10,8 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = False
     SESSION_REDIS = redis.Redis(
-        host='redis-15719.c325.us-east-1-4.ec2.cloud.redislabs.com',
-        port=15719,
-        password='PMYtfgnI4RC6Q0UTGTy4yRdjA7K8nuiI'
+        host='redis-15722.c244.us-east-1-2.ec2.redns.redis-cloud.com',
+        port=15722,
+        password='iE3DH0q7yjFAK4iLhCYiZHxuuWb0Z7tU'
     )
 

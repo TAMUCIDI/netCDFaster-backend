@@ -1,9 +1,21 @@
 import xarray as xr
+
+from math import ceil
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from dateutil import parser
 import io
+
+def open_dataset(filename, interface, chunk_dict=None):
+    return xr.open_dataset(filename, engine=interface, chunks=chunk_dict)
+
+def calculate_chunk_size(total_length, num_divisions):
+    if num_divisions is None:
+        return None
+    else:
+        return ceil(total_length / num_divisions)
 
 def read_metadata(file):
     """ 解析NetCDF文件的元信息并返回一个字典。"""
@@ -68,6 +80,10 @@ def get_coord_names(variable):
     return coord_names
     
 def plot_subset(file_path, queryDict):
+
+    # predict chunk size dict using model
+    
+
     with xr.open_dataset(file_path) as ds:
         var_name = queryDict['varName']
         # lon value range

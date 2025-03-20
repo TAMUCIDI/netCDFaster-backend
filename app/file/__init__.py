@@ -39,6 +39,7 @@ def variable_name(var_name):
 
     # open file and read content
     variable_info = query_variable(file_path, var_name)
+    session[var_name] = variable_info
 
     return jsonify(variable_info), 200
 
@@ -50,7 +51,7 @@ def plot_variable():
         return jsonify({'Session Error': 'No Uploaded File Found'}), 400
     
     file_path = Path(file_path)
-
+    # TODO: check request args format
     queryDict = request.args.to_dict()
 
     fig_buf = plot_subset(file_path, queryDict)

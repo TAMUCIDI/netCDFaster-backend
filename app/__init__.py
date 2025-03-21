@@ -19,10 +19,16 @@ def create_app():
     CORS(
         app,
         supports_credentials=True,
-        origins=['http://127.0.0.1:3000'])
+        origins=[
+            "http://127.0.0.1:3000",
+            "http://localhost:3000",
+            "http://0.0.0.0/3000"
+        ],  # 生产环境应指定具体域名
+        methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Content-Type", "Authorization"]
+    )
 
-    session = Session()
-    session.init_app(app)
+    Session(app)
 
     # register module blueprints
     app.register_blueprint(file_bp)

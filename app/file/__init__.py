@@ -1,5 +1,6 @@
 from werkzeug.utils import secure_filename
 from pathlib import Path
+import os
 
 from flask import Blueprint, request, jsonify, current_app, session, send_file
 
@@ -16,11 +17,12 @@ def upload_file():
         return jsonify({'error': 'No file selected for uploading'}), 400
     # save file to tmp directory
     filename = secure_filename(file.filename)
-    tmp_file_path = current_app.config['TMP_DIR'] / filename
+    tmp_file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     file.save(tmp_file_path)
 
     # save file path to session
     session['file_path'] = str(tmp_file_path)
+    print(f"Session id: {session.sid}")
 
     # open file and read content
     metaInfo = read_metadata(tmp_file_path)
@@ -31,7 +33,9 @@ def upload_file():
 def variable_name(var_name):
     # get file path from session cache
     try:
-        file_path = session['file_path']
+        file_path = session.get('file_path')
+        print(f"file_path: {file_path}")
+        print(f"Session id: {session.sid}")
     except KeyError:
         return jsonify({'Session Error': 'No Uploaded File Found'}), 400
 

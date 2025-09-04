@@ -10,6 +10,7 @@ from flask_session import Session
 # local modules
 from .config import Config
 from .file import file_bp
+from .utils import error_response, APIError
 
 def create_app():
     app = Flask(__name__)
@@ -29,6 +30,22 @@ def create_app():
     )
 
     Session(app)
+    
+    # Initialize configuration
+    Config.init_app(app)
+
+    # register error handlers
+    @app.errorhandler(APIError)
+    def handle_api_error(error):
+        return error_response(error, error.status_code)
+    
+    @app.errorhandler(404)
+    def handle_not_found(error):
+        return error_response(APIError("Resource not found"), 404)
+    
+    @app.errorhandler(500)
+    def handle_internal_error(error):
+        return error_response(APIError("Internal server error"), 500)
 
     # register module blueprints
     app.register_blueprint(file_bp)

@@ -1,14 +1,15 @@
 from werkzeug.utils import secure_filename
 from pathlib import Path
 import os
-import time
+import hashlib
 import logging
+import numpy as np
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app, session, send_file
 
 from .fileProcess import read_metadata, query_variable, plot_subset
-from ..schemas import FileUploadSchema, VariablePlotSchema
+from ..schemas import FileUploadSchema, VariablePlotSchema, RemoteFileQuerySchema
 from ..utils import validate_request, success_response, error_response, APIError, safe_file_operation
 from ..resource_manager import resource_manager
 from ..model.model import get_model_status, reload_model
@@ -16,6 +17,25 @@ from ..model.model import get_model_status, reload_model
 logger = logging.getLogger(__name__)
 
 file_bp = Blueprint('file', __name__, url_prefix='/file')
+
+def convert_numpy_types(obj):
+    """Convert numpy types to JSON serializable Python types"""
+    if isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_types(item) for item in obj)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif hasattr(obj, 'item'):  # numpy scalar
+        return obj.item()
+    else:
+        return obj
 
 @file_bp.route('/upload', methods=['POST'])
 @validate_request(FileUploadSchema)
@@ -38,33 +58,53 @@ def upload_file(validated_data):
         # Validate file size using resource manager
         file_size = resource_manager.validate_file_size(file)
         
-        # Generate unique filename to avoid conflicts
-        timestamp = str(int(time.time()))
-        name, ext = os.path.splitext(filename)
-        unique_filename = f"{name}_{timestamp}{ext}"
-        tmp_file_path = os.path.join(upload_folder, unique_filename)
+        # Calculate file content hash to avoid duplicates
+        file.seek(0)
+        hasher = hashlib.md5()
+        for chunk in iter(lambda: file.read(4096), b""):
+            hasher.update(chunk)
+        file_hash = hasher.hexdigest()
+        file.seek(0)  # Reset file pointer for saving
         
-        file.save(tmp_file_path)
+        # Use hash as filename to avoid duplicates
+        hashed_filename = f"{file_hash}.nc"
+        tmp_file_path = os.path.join(upload_folder, hashed_filename)
         
-        # Verify saved file
-        actual_size = os.path.getsize(tmp_file_path)
-        if actual_size != file_size:
-            raise APIError("File upload verification failed", 500)
+        # Check if file already exists
+        if os.path.exists(tmp_file_path):
+            logger.info(f"File already exists, reusing: {hashed_filename} (original: {filename})")
+            # Verify existing file size matches
+            actual_size = os.path.getsize(tmp_file_path)
+            if actual_size != file_size:
+                logger.warning(f"Existing file size mismatch, re-saving: {hashed_filename}")
+                file.save(tmp_file_path)
+        else:
+            logger.info(f"Saving new file: {hashed_filename} (original: {filename})")
+            file.save(tmp_file_path)
+            
+            # Verify saved file
+            actual_size = os.path.getsize(tmp_file_path)
+            if actual_size != file_size:
+                raise APIError("File upload verification failed", 500)
         
-        # Save file path to session with cleanup timestamp
+        # Save file info to session
         session['file_path'] = str(tmp_file_path)
-        session['upload_time'] = time.time()
+        session['file_hash'] = file_hash
         session['original_filename'] = filename
         
-        logger.info(f"File uploaded: {filename} -> {unique_filename} ({file_size/1024/1024:.2f}MB), Session: {session.sid}")
+        logger.info(f"File processed: {filename} -> {hashed_filename} ({file_size/1024/1024:.2f}MB), Session: {session.sid}")
         
         # Read metadata with error handling
         metaInfo = read_metadata(tmp_file_path)
+        
+        # Convert numpy types to JSON serializable types
+        metaInfo = convert_numpy_types(metaInfo)
         
         # Add file info to response
         metaInfo['upload_info'] = {
             'original_filename': filename,
             'file_size_mb': round(file_size / 1024 / 1024, 2),
+            'file_hash': file_hash,
             'upload_time': datetime.now().isoformat()
         }
         
@@ -80,6 +120,46 @@ def upload_file(validated_data):
             except Exception as cleanup_error:
                 logger.error(f"Failed to cleanup file: {cleanup_error}")
         raise
+
+@file_bp.route('/remoteQuery', methods=['POST'])
+@validate_request(RemoteFileQuerySchema)
+@safe_file_operation
+def remote_query(validated_data):
+    try:
+        # Check system resources first
+        if not resource_manager.check_system_resources():
+            raise APIError("System resources insufficient for remote file processing", 503)
+        
+        remote_url = validated_data['url']
+        
+        logger.info(f"Querying remote NetCDF file: {remote_url}")
+        
+        # Read metadata from remote URL directly
+        metaInfo = read_metadata(remote_url)
+        
+        # Convert numpy types to JSON serializable types
+        metaInfo = convert_numpy_types(metaInfo)
+        
+        # Add remote file info to response
+        metaInfo['remote_info'] = {
+            'url': remote_url,
+            'access_time': datetime.now().isoformat(),
+            'file_type': 'remote_netcdf'
+        }
+        
+        return success_response(metaInfo, "Remote NetCDF file metadata retrieved successfully")
+        
+    except Exception as e:
+        logger.error(f"Remote query failed for URL {remote_url}: {str(e)}")
+        # Provide more specific error messages
+        if "No such file or directory" in str(e) or "file not found" in str(e).lower():
+            raise APIError("Remote NetCDF file not found or inaccessible", 404)
+        elif "permission" in str(e).lower() or "forbidden" in str(e).lower():
+            raise APIError("Access denied to remote NetCDF file", 403)
+        elif "timeout" in str(e).lower():
+            raise APIError("Timeout accessing remote NetCDF file", 408)
+        else:
+            raise APIError(f"Failed to process remote NetCDF file: {str(e)}", 500)
 
 @file_bp.route('/detail/<string:var_name>', methods=['GET'])
 @safe_file_operation

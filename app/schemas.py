@@ -1,5 +1,6 @@
 from marshmallow import Schema, fields, validate, ValidationError
 from werkzeug.datastructures import FileStorage
+import re
 
 
 class FileUploadSchema(Schema):
@@ -13,6 +14,29 @@ class FileUploadSchema(Schema):
         if not file.filename.lower().endswith('.nc'):
             raise ValidationError('Only NetCDF (.nc) files are allowed')
         return file
+
+
+class RemoteFileQuerySchema(Schema):
+    url = fields.Str(required=True, validate=validate.Length(min=10, max=2000))
+    
+    def validate_url(self, url):
+        # Validate URL format
+        url_pattern = re.compile(
+            r'^https?://'  # http:// or https://
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
+            r'localhost|'  # localhost...
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+            r'(?::\d+)?'  # optional port
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        
+        if not url_pattern.match(url):
+            raise ValidationError('Invalid URL format')
+        
+        # Check if URL ends with .nc (NetCDF file)
+        if not url.lower().endswith('.nc'):
+            raise ValidationError('URL must point to a NetCDF (.nc) file')
+        
+        return url
 
 
 class VariablePlotSchema(Schema):

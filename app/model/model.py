@@ -1,5 +1,5 @@
 import os
-import joblib
+from catboost import CatBoostClassifier
 from math import ceil
 import numpy as np
 import pandas as pd
@@ -90,10 +90,10 @@ def load_model():
     
     try:
         load_dotenv(dotenv_path=".env")
-        model_path = os.getenv("MODEL_PKL_PATH")
+        model_path = os.getenv("MODEL_JSON_PATH") or os.getenv("MODEL_PKL_PATH")
         
         if not model_path:
-            logger.warning("MODEL_PKL_PATH not set in environment variables")
+            logger.warning("MODEL_JSON_PATH not set in environment variables")
             return None
         
         model_path = Path(model_path)
@@ -105,8 +105,10 @@ def load_model():
         # Check if we need to reload the model
         if _model_cache is None or _model_path != str(model_path):
             logger.info(f"Loading ML model from: {model_path}")
-            _model_cache = joblib.load(str(model_path))
+            _model_cache = CatBoostClassifier()
+            _model_cache.load_model(str(model_path), format="json")
             _model_path = str(model_path)
+            print(f"✓ CatBoost model loaded successfully from: {model_path}")
             logger.info("ML model loaded successfully")
         
         return _model_cache

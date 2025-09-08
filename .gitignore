@@ -172,3 +172,9 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/flask
 __pycache__/*.pyc
+
+# model file
+app/model/*.json*
+
+# tmp cached files
+uploads/*

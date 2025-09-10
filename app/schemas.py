@@ -41,10 +41,10 @@ class RemoteFileQuerySchema(Schema):
 
 class VariablePlotSchema(Schema):
     varName = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    lonMin = fields.Float(required=True, validate=validate.Range(min=-180, max=180))
-    lonMax = fields.Float(required=True, validate=validate.Range(min=-180, max=180))
-    latMin = fields.Float(required=True, validate=validate.Range(min=-90, max=90))
-    latMax = fields.Float(required=True, validate=validate.Range(min=-90, max=90))
+    lonMin = fields.Float(required=True)
+    lonMax = fields.Float(required=True)
+    latMin = fields.Float(required=True)
+    latMax = fields.Float(required=True)
     time = fields.Str(required=True, validate=validate.Length(min=1))
     
     def validate_coordinates(self, data, **kwargs):

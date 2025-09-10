@@ -92,17 +92,35 @@ def plot_subset(file_path, queryDict, session):
     file_size = float(session[var_name]['file_size'])
     var_dim_len = float(session[var_name]['var_dim_len'])
     variable_size = float(session[var_name]['variable_size'])
-    lon_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'longitude'), None)
+    
+    # First, open dataset to get actual coordinate names using get_coord_names
+    with xr.open_dataset(file_path) as temp_ds:
+        variable = temp_ds[var_name]
+        coord_names = get_coord_names(variable)
+    
+    # Now find coordinates in session data using the actual coordinate names
+    lon_coord_name = coord_names['lon']
+    if lon_coord_name is None:
+        raise ValueError("Longitude coordinate not found in dataset.")
+    lon_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == lon_coord_name), None)
     if lon_coord is None:
-        raise ValueError("Longitude coordinate not found in session data.")
+        raise ValueError(f"Longitude coordinate '{lon_coord_name}' not found in session data.")
     lon_len = float(lon_coord['len'])
-    lat_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'latitude'), None)
+    
+    lat_coord_name = coord_names['lat']
+    if lat_coord_name is None:
+        raise ValueError("Latitude coordinate not found in dataset.")
+    lat_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == lat_coord_name), None)
     if lat_coord is None:
-        raise ValueError("Latitude coordinate not found in session data.")
+        raise ValueError(f"Latitude coordinate '{lat_coord_name}' not found in session data.")
     lat_len = float(lat_coord['len'])
-    time_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == 'time'), None)
+    
+    time_coord_name = coord_names['time']
+    if time_coord_name is None:
+        raise ValueError("Time coordinate not found in dataset.")
+    time_coord = next((coord for coord in session[var_name]['coords'] if coord.get('name') == time_coord_name), None)
     if time_coord is None:
-        raise ValueError("Time coordinate not found in session data.")
+        raise ValueError(f"Time coordinate '{time_coord_name}' not found in session data.")
     time_len = float(time_coord['len'])
 
     # lon value range
@@ -130,7 +148,6 @@ def plot_subset(file_path, queryDict, session):
         # time value
         time = parser.parse(queryDict['time'])
         variable = ds[var_name]
-        coord_names = get_coord_names(variable)
         # 从数据集中获取指定变量和时间的子集
         try:
             # 使用.sel()选择最接近的时间点

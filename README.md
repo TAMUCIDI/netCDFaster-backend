@@ -2,6 +2,16 @@
 
 A lightweight backend service for managing and serving netCDF data.
 
+## Acknowledgements
+
+This project is developed and maintained by [Zhenlei Song](https://orcid.org/0009-0007-5205-3808) and supervised by [Dr. Zhe Zhang](https://orcid.org/0000-0001-7108-182X) from CIDI Lab, Department of Geography at Texas A&M University.
+
+Any individual or organization using this code should cite the following paper:
+
+```
+Song, Z., Zhang, Z., Sussman, A., Xie, Y., Brenner, J., & Liu, J. (2025). NetCDFaster: Optimizing NetCDF data querying and geo-visualization using high-performance machine learning. SoftwareX, 31, 102269.
+```
+
 ## Features
 
 - API for uploading and retrieving netCDF files.

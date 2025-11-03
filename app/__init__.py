@@ -17,20 +17,17 @@ def create_app():
     # load config
     app.config.from_object(Config)
 
+    # Configure CORS with environment-based origins
     CORS(
         app,
         supports_credentials=True,
-        origins=[
-            "http://127.0.0.1:3000",
-            "http://localhost:3000",
-            "http://0.0.0.0/3000"
-        ],  # 生产环境应指定具体域名
+        origins=Config.CORS_ORIGINS,
         methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type", "Authorization"]
     )
 
     Session(app)
-    
+
     # Initialize configuration
     Config.init_app(app)
 
@@ -38,16 +35,31 @@ def create_app():
     @app.errorhandler(APIError)
     def handle_api_error(error):
         return error_response(error, error.status_code)
-    
+
     @app.errorhandler(404)
     def handle_not_found(error):
         return error_response(APIError("Resource not found"), 404)
-    
+
     @app.errorhandler(500)
     def handle_internal_error(error):
         return error_response(APIError("Internal server error"), 500)
 
-    # register module blueprints
-    app.register_blueprint(file_bp)
+    # Health check endpoint for Kubernetes and container orchestration
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        try:
+            # Check Redis connectivity
+            if hasattr(app.config, 'SESSION_REDIS'):
+                app.config['SESSION_REDIS'].ping()
+            return {"status": "healthy", "service": "netcdf-backend"}, 200
+        except Exception as e:
+            return {"status": "unhealthy", "service": "netcdf-backend", "error": str(e)}, 503
+
+    # Register module blueprints with URL prefix from config
+    # URL_PREFIX is the application-level prefix (e.g., /netcdfaster-backend)
+    # file_bp routes start from /file (e.g., /upload, /detail, etc.)
+    # Combined route: URL_PREFIX/file/upload
+    url_prefix = Config.URL_PREFIX + '/file'
+    app.register_blueprint(file_bp, url_prefix=url_prefix)
 
     return app

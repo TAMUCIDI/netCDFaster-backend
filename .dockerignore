@@ -1,0 +1,53 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Development
+.vscode
+.idea
+*.pyc
+__pycache__
+*.egg-info
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+.tox
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+venv
+env
+.venv
+
+# Build artifacts
+build
+dist
+
+# Uploads and temp files (should be managed via volumes)
+uploads/
+*.nc
+
+# Documentation
+docs
+*.md
+LICENSE
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Other
+.editorconfig
+Makefile

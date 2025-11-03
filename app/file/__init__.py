@@ -16,7 +16,8 @@ from ..model.model import get_model_status, reload_model
 
 logger = logging.getLogger(__name__)
 
-file_bp = Blueprint('file', __name__, url_prefix='/file')
+# Note: url_prefix will be added dynamically at app registration time based on URL_PREFIX config
+file_bp = Blueprint('file', __name__)
 
 def convert_numpy_types(obj):
     """Convert numpy types to JSON serializable Python types"""

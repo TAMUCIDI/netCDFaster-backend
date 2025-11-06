@@ -45,12 +45,27 @@ def validate_request(schema_class):
                 schema = schema_class()
                 
                 if request.method == 'POST':
+                    # Log the actual Content-Type for debugging
+                    logger.debug(f"Request Content-Type: {request.content_type}")
+
                     if request.content_type and 'multipart/form-data' in request.content_type:
                         # Handle file uploads
                         data = request.files.to_dict()
                         data.update(request.form.to_dict())
-                    else:
+                    elif request.content_type and 'application/json' in request.content_type:
+                        # Handle JSON requests
                         data = request.get_json() or {}
+                    else:
+                        # Fallback: try to parse multipart or JSON without relying on Content-Type
+                        # This handles cases where Traefik or proxies modify the Content-Type header
+                        data = {}
+                        if request.files:
+                            data.update(request.files.to_dict())
+                        if request.form:
+                            data.update(request.form.to_dict())
+                        if not data:
+                            # Only attempt JSON parsing if no form/file data found
+                            data = request.get_json(force=True, silent=True) or {}
                 else:
                     data = request.args.to_dict()
                 

@@ -36,7 +36,7 @@ class Config:
     # Session configuration
     SESSION_TYPE = 'redis'
     SESSION_PERMANENT = False
-    SESSION_USE_SIGNER = True
+    SESSION_USE_SIGNER = False
     SESSION_KEY_PREFIX = 'netcdf:'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_NAME = 'netcdf_session'
@@ -45,7 +45,7 @@ class Config:
     # Session cookie security based on environment
     if FLASK_ENV == "production":
         SESSION_COOKIE_SAMESITE = "Strict"
-        SESSION_COOKIE_SECURE = True
+        SESSION_COOKIE_SECURE = False  # Allow HTTP in current deployment
     else:
         SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
         SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() == "true"
@@ -54,7 +54,7 @@ class Config:
     REDIS_URL = os.getenv("REDIS_URL")
     if not REDIS_URL:
         raise ValueError("REDIS_URL environment variable is not set. This is required for session management.")
-    SESSION_REDIS = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+    SESSION_REDIS = redis.Redis.from_url(REDIS_URL, decode_responses=False)
 
     @classmethod
     def init_app(cls, app):

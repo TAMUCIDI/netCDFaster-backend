@@ -93,8 +93,8 @@ def upload_file(validated_data):
         session['file_hash'] = file_hash
         session['original_filename'] = filename
         session['file_type'] = 'local'
-        
-        logger.info(f"File processed: {filename} -> {hashed_filename} ({file_size/1024/1024:.2f}MB), Session: {session.sid}")
+
+        logger.info(f"File processed: {filename} -> {hashed_filename} ({file_size/1024/1024:.2f}MB), Session ID: {session.sid}, Session data saved: file_path={session.get('file_path')}, file_type={session.get('file_type')}")
         
         # Read metadata with error handling
         metaInfo = read_metadata(tmp_file_path)
@@ -199,12 +199,13 @@ def variable_name(var_name):
             remote_url = session.get('remote_url')
             if not remote_url:
                 raise APIError("No remote file URL found. Please query a remote file first", 404)
-            
+
             logger.info(f"Querying variable: {var_name} from remote URL: {remote_url}, Session: {session.sid}")
             data_source = remote_url
-            
+
         else:
-            # No file source available
+            # No file source available - log detailed session info for debugging
+            logger.warning(f"No file source in session. Session ID: {session.sid}, Session data keys: {list(session.keys())}, file_type value: {session.get('file_type')}")
             raise APIError("No file source found. Please upload a file or query a remote URL first", 404)
         
         # Query variable with error handling
